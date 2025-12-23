@@ -1,6 +1,8 @@
 # TempBarsGen
 Python-based Linux monitor for NZXT Kraken LCD displays. Recreates dynamic CPU and GPU temperature bars using static images updated in real time via liquidctl, simulating the original NZXT Windows animation on 320×320 LCD screens.
 
+![Kraken LCD Demo](img/demo.gif)
+
 # NZXT Kraken LCD – Linux Dynamic Temperature Bars
 
 This project is a **Python script** designed to be used with the **NZXT Kraken 2023** liquid cooler on **Linux**.
