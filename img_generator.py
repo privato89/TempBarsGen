@@ -10,25 +10,26 @@ from PIL import Image, ImageDraw, ImageFont
 # =========================
 W, H = 320, 320
 
-BAR_WIDTH = 315
-BAR_HEIGHT = 40
+BAR_WIDTH = 318
+BAR_HEIGHT = 25
 BAR_RADIUS = BAR_HEIGHT // 2
 BAR_X = 0
 
-CPU_TEXT_Y = 32
-BAR_CPU_Y  = 110
-BAR_GPU_Y  = 162
-GPU_TEXT_Y = 264
+CPU_TEXT_Y = 40
+BAR_CPU_Y  = 120
+BAR_GPU_Y  = 160
+GPU_TEXT_Y = 248
 
-BG_COLOR = (0, 0, 0, 255)
-BAR_BG = (190, 192, 196, 255)
-CPU_FG = (80, 120, 255, 255)
-GPU_FG = (190, 80, 220, 255)
+BG_COLOR   = "#000000FF"
+BAR_BG     = "#BEC0C4FF"
+CPU_FG     = "#4900D0FF"
+GPU_FG     = "#A033BEFF"
 
-TEXT_MAIN = (255, 255, 255, 255)
-TEXT_SUB = (220, 220, 220, 255)
+TEXT_MAIN  = "#FFFFFFFF"
+TEXT_SUB   = "#FFFFFFFF"
 
-OUTPUT_PNG = "/home/giuseppe/Documenti/Progetti Python/liquidctl_new_project/img/logo.png"
+
+OUTPUT_PNG = "/home/your_username/Documents/liquidctl_new_project/img/logo.png"
 LIQUIDCTL_CMD = ['liquidctl', '--match', 'Kraken', 'set', 'lcd', 'screen', 'static', OUTPUT_PNG]
 
 # Interpolazione
@@ -37,7 +38,7 @@ SMOOTHING = 0.35         # 0..1 (più alto = più veloce verso il reale)
 MAX_STEP = 4             # max gradi per step (limita “salti”)
 
 # Font (Gotham SSm)
-FONT_PATH = "/home/giuseppe/.local/share/fonts/GothamSSm/gothamnarrssm_black.otf"
+FONT_PATH = "/home/your_username/.local/share/fonts/GothamSSm/gothamnarrssm_black.otf"
 font_label = ImageFont.truetype(FONT_PATH, 42)
 font_temp_value = ImageFont.truetype(FONT_PATH, 132)
 font_degree = ImageFont.truetype(FONT_PATH, 38)
@@ -82,7 +83,7 @@ def render_frame(cpu_temp, gpu_temp):
     draw_bar(draw, BAR_X, BAR_CPU_Y, BAR_WIDTH, BAR_HEIGHT, BAR_RADIUS, BAR_BG, CPU_FG, cpu_width)
     draw_bar(draw, BAR_X, BAR_GPU_Y, BAR_WIDTH, BAR_HEIGHT, BAR_RADIUS, BAR_BG, GPU_FG, gpu_width)
 
-    TEMP_RIGHT_EDGE = BAR_X + BAR_WIDTH - 10
+    TEMP_RIGHT_EDGE = BAR_X + BAR_WIDTH - 14
 
     # Temperature (ancorate a destra) + simbolo °
     draw_temp_with_degree(draw, TEMP_RIGHT_EDGE, CPU_TEXT_Y - 60, cpu_temp,
@@ -167,6 +168,48 @@ def set_lcd_brightness():
         stderr=subprocess.DEVNULL
     )
 
+# import os
+# import sys
+
+# def generate_demo_gif():
+#     """
+#     Generates a demo GIF simulating CPU/GPU temperature changes.
+#     Does NOT send anything to the Kraken LCD.
+#     """
+
+#     demo_dir = "img/demo_frames"
+#     os.makedirs(demo_dir, exist_ok=True)
+
+#     frames = []
+
+#     # Simulated temperatures (realistic pattern)
+#     temps = list(range(20, 85, 3)) + list(range(85, 40, -3))
+
+#     for i, t in enumerate(temps):
+#         cpu = t
+#         gpu = max(30, t - 15)
+
+#         # Generate frame (reuse existing renderer)
+#         render_frame(cpu, gpu)
+
+#         frame_path = f"{demo_dir}/frame_{i:03d}.png"
+#         Image.open(OUTPUT_PNG).save(frame_path)
+#         frames.append(Image.open(frame_path))
+
+#     # Create GIF
+#     gif_path = "img/demo.gif"
+#     frames[0].save(
+#         gif_path,
+#         save_all=True,
+#         append_images=frames[1:],
+#         duration=120,   # ms per frame
+#         loop=0
+#     )
+
+#     print(f"Demo GIF created: {gif_path}")
+
+
+
 # =========================
 # MAIN LOOP
 # =========================
@@ -204,4 +247,11 @@ def main():
 
 
 if __name__ == "__main__":
+
+    # # DEMO MODE (GIF generation)
+    # if len(sys.argv) > 1 and sys.argv[1] == "demo":
+    #     generate_demo_gif()
+    #     sys.exit(0)
+
+    # NORMAL MODE
     main()
