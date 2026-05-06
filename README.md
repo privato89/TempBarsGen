@@ -90,6 +90,9 @@ Install required Python libraries:
 - `psutil`
 - `Pillow (PIL)`
 
+*If you are using a NVIDIA GPU, install this library also:*
+- `pynvml`
+
 Install them using pip:
 - `pip install psutil pillow`
 
