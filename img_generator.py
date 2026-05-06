@@ -224,6 +224,46 @@ def set_lcd_brightness():
         stderr=subprocess.DEVNULL
     )
 
+# import os
+# import sys
+
+# def generate_demo_gif():
+#     """
+#     Generates a demo GIF simulating CPU/GPU temperature changes.
+#     Does NOT send anything to the Kraken LCD.
+#     """
+
+#     demo_dir = "img/demo_frames"
+#     os.makedirs(demo_dir, exist_ok=True)
+
+#     frames = []
+
+#     # Simulated temperatures (realistic pattern)
+#     temps = list(range(20, 85, 3)) + list(range(85, 40, -3))
+
+#     for i, t in enumerate(temps):
+#         cpu = t
+#         gpu = max(30, t - 15)
+
+#         # Generate frame (reuse existing renderer)
+#         render_frame(cpu, gpu)
+
+#         frame_path = f"{demo_dir}/frame_{i:03d}.png"
+#         Image.open(OUTPUT_PNG).save(frame_path)
+#         frames.append(Image.open(frame_path))
+
+#     # Create GIF
+#     gif_path = "img/demo.gif"
+#     frames[0].save(
+#         gif_path,
+#         save_all=True,
+#         append_images=frames[1:],
+#         duration=120,   # ms per frame
+#         loop=0
+#     )
+
+#     print(f"Demo GIF created: {gif_path}")
+
 
 # =========================
 # MAIN LOOP
@@ -260,4 +300,10 @@ def main():
 
 
 if __name__ == "__main__":
+    # # DEMO MODE (GIF generation)
+    # if len(sys.argv) > 1 and sys.argv[1] == "demo":
+    #     generate_demo_gif()
+    #     sys.exit(0)
+
+    # NORMAL MODE
     main()
