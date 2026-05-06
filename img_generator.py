@@ -3,6 +3,7 @@ import time
 import subprocess
 import psutil
 from PIL import Image, ImageDraw, ImageFont
+import atexit
 
 
 # =========================
@@ -35,13 +36,58 @@ LIQUIDCTL_CMD = ['liquidctl', '--match', 'Kraken', 'set', 'lcd', 'screen', 'stat
 # Interpolazione
 REFRESH_S = 0.5          # ogni quanto aggiorni
 SMOOTHING = 0.35         # 0..1 (più alto = più veloce verso il reale)
-MAX_STEP = 4             # max gradi per step (limita “salti”)
+MAX_STEP = 4             # max gradi per step (limita "salti")
 
 # Font (Gotham SSm)
 FONT_PATH = "/home/your_username/.local/share/fonts/GothamSSm/gothamnarrssm_black.otf"
 font_label = ImageFont.truetype(FONT_PATH, 42)
 font_temp_value = ImageFont.truetype(FONT_PATH, 132)
 font_degree = ImageFont.truetype(FONT_PATH, 38)
+
+
+# =========================
+# GPU BACKEND — AUTO DETECT
+# =========================
+
+# --- Tentativo NVIDIA (pynvml) ---
+try:
+    import pynvml
+    pynvml.nvmlInit()
+    _nvml_handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+    _nvml_available = True
+    print("[GPU] NVIDIA detected via pynvml")
+except Exception:
+    _nvml_available = False
+    _nvml_handle = None
+
+# --- Tentativo AMD (psutil/hwmon) ---
+def _amd_available():
+    try:
+        temps = psutil.sensors_temperatures()
+        if 'amdgpu' in temps:
+            for t in temps['amdgpu']:
+                if t.label == 'edge':
+                    return True
+    except Exception:
+        pass
+    return False
+
+_amd_present = (not _nvml_available) and _amd_available()
+if _amd_present:
+    print("[GPU] AMD detected via psutil/hwmon")
+
+if not _nvml_available and not _amd_present:
+    print("[GPU] WARNING: no supported GPU found (neither NVIDIA nor AMD). GPU temp will show 0.")
+
+def _cleanup_nvml():
+    if _nvml_available:
+        try:
+            pynvml.nvmlShutdown()
+        except Exception:
+            pass
+
+atexit.register(_cleanup_nvml)
+
 
 # =========================
 # FUNZIONI GRAFICHE
@@ -85,7 +131,6 @@ def render_frame(cpu_temp, gpu_temp):
 
     TEMP_RIGHT_EDGE = BAR_X + BAR_WIDTH - 14
 
-    # Temperature (ancorate a destra) + simbolo °
     draw_temp_with_degree(draw, TEMP_RIGHT_EDGE, CPU_TEXT_Y - 60, cpu_temp,
                           font_temp_value, font_degree, TEXT_MAIN)
 
@@ -98,31 +143,46 @@ def render_frame(cpu_temp, gpu_temp):
 
     img.save(OUTPUT_PNG)
 
+
 # =========================
-# FUNZIONI TEMPERATURE (INT)
+# FUNZIONI TEMPERATURE
 # =========================
 def get_cpu_temp_int():
-    temps = psutil.sensors_temperatures()
-    if 'k10temp' in temps and temps['k10temp']:
-        return int(round(temps['k10temp'][0].current))
+    try:
+        temps = psutil.sensors_temperatures()
+        if 'k10temp' in temps and temps['k10temp']:
+            return int(round(temps['k10temp'][0].current))
+    except Exception:
+        pass
     return None
 
 def get_gpu_temp_int():
-    temps = psutil.sensors_temperatures()
-    if 'amdgpu' in temps:
-        for t in temps['amdgpu']:
-            if t.label == 'edge':
-                return int(round(t.current))
+    # --- NVIDIA ---
+    if _nvml_available and _nvml_handle is not None:
+        try:
+            temp = pynvml.nvmlDeviceGetTemperature(_nvml_handle, pynvml.NVML_TEMPERATURE_GPU)
+            return int(round(temp))
+        except Exception:
+            return None
+
+    # --- AMD ---
+    if _amd_present:
+        try:
+            temps = psutil.sensors_temperatures()
+            if 'amdgpu' in temps:
+                for t in temps['amdgpu']:
+                    if t.label == 'edge':
+                        return int(round(t.current))
+        except Exception:
+            pass
+
     return None
+
 
 # =========================
 # INTERPOLAZIONE
 # =========================
 def smooth_step(display_val, target_val):
-    """
-    display_val -> target_val con smoothing + step max.
-    Ritorna un INT.
-    """
     if target_val is None:
         return display_val
 
@@ -130,18 +190,14 @@ def smooth_step(display_val, target_val):
         return int(target_val)
 
     diff = target_val - display_val
-
-    # avvicinamento morbido
     step = int(round(diff * SMOOTHING))
 
-    # se lo smoothing produce 0 ma siamo lontani, muoviti di 1
     if step == 0 and diff != 0:
         step = 1 if diff > 0 else -1
 
-    # limita i salti
     step = clamp(step, -MAX_STEP, MAX_STEP)
-
     return int(display_val + step)
+
 
 # =========================
 # IMPOSTAZIONE PRINCIPALE LCD
@@ -168,47 +224,6 @@ def set_lcd_brightness():
         stderr=subprocess.DEVNULL
     )
 
-# import os
-# import sys
-
-# def generate_demo_gif():
-#     """
-#     Generates a demo GIF simulating CPU/GPU temperature changes.
-#     Does NOT send anything to the Kraken LCD.
-#     """
-
-#     demo_dir = "img/demo_frames"
-#     os.makedirs(demo_dir, exist_ok=True)
-
-#     frames = []
-
-#     # Simulated temperatures (realistic pattern)
-#     temps = list(range(20, 85, 3)) + list(range(85, 40, -3))
-
-#     for i, t in enumerate(temps):
-#         cpu = t
-#         gpu = max(30, t - 15)
-
-#         # Generate frame (reuse existing renderer)
-#         render_frame(cpu, gpu)
-
-#         frame_path = f"{demo_dir}/frame_{i:03d}.png"
-#         Image.open(OUTPUT_PNG).save(frame_path)
-#         frames.append(Image.open(frame_path))
-
-#     # Create GIF
-#     gif_path = "img/demo.gif"
-#     frames[0].save(
-#         gif_path,
-#         save_all=True,
-#         append_images=frames[1:],
-#         duration=120,   # ms per frame
-#         loop=0
-#     )
-
-#     print(f"Demo GIF created: {gif_path}")
-
-
 
 # =========================
 # MAIN LOOP
@@ -231,13 +246,11 @@ def main():
         cpu_disp = smooth_step(cpu_disp, cpu_real)
         gpu_disp = smooth_step(gpu_disp, gpu_real)
 
-        # clamp da 0 a 100 per la barra
         cpu_show = clamp(cpu_disp if cpu_disp is not None else 0, 0, 100)
         gpu_show = clamp(gpu_disp if gpu_disp is not None else 0, 0, 100)
 
         render_frame(cpu_show, gpu_show)
 
-        # invia al Kraken
         try:
             subprocess.run(LIQUIDCTL_CMD, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception:
@@ -247,11 +260,4 @@ def main():
 
 
 if __name__ == "__main__":
-
-    # # DEMO MODE (GIF generation)
-    # if len(sys.argv) > 1 and sys.argv[1] == "demo":
-    #     generate_demo_gif()
-    #     sys.exit(0)
-
-    # NORMAL MODE
     main()
