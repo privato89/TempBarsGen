@@ -56,9 +56,14 @@ try:
     _nvml_handle = pynvml.nvmlDeviceGetHandleByIndex(0)
     _nvml_available = True
     print("[GPU] NVIDIA detected via pynvml")
+except ModuleNotFoundError:
+    _nvml_available = False
+    _nvml_handle = None
+    print("[GPU] pynvml not installed. If you have an NVIDIA GPU run: pip install pynvml")
 except Exception:
     _nvml_available = False
     _nvml_handle = None
+    print("[GPU] pynvml found but NVIDIA GPU not detected or driver unavailable")
 
 # --- Tentativo AMD (psutil/hwmon) ---
 def _amd_available():
